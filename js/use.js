@@ -21,6 +21,20 @@ socket.on("listenMasaFirstLogin",function(data){
 		});
 	}
 });
+socket.on("masaLoginCevap",function (data) {
+    console.log(data);
+    if(data.cevap == 1){
+
+        $(document).ready(function () {
+            $(".giris").hide();
+            $(".siparis").show();
+            $(".siparis").html(data.menu);
+        });
+    }
+    else{
+
+    }
+});
 function masaLogin(){
     var masaNo = $("input[name='masaNo']").val();
     socket.emit("masaLogin",{"masaNo":masaNo});

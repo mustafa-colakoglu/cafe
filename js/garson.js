@@ -18,7 +18,7 @@ socket.on("listenGarsonFirstLogin",function(data){
 });
 socket.on("masaIstegi",function(data){
     $("document").ready(function () {
-        $(".masaIstekleri").append('<div class="masaIstegi">'+data.masaNo+" numaralı masa adisyon isteği gönderdi"+' <a href="#" onclick="masaOnayla('+data.masaNo+')'+'">Onayla</a> <br /><a href="#" onclick="masaOnaylama('+data.masaNo+')'+'">Onaylama</a></div>');
+        $(".masaIstekleri").append('<div class="masaIstegi">'+data.masaNo+" numaralı masa adisyon isteği gönderdi"+' <a href="#" onclick="masaCevapla('+data.masaNo+',1)'+'">Onayla</a> <br /><a href="#" onclick="masaCevapla('+data.masaNo+',0)'+'">Onaylama</a></div>');
     });
 });
 function login(){
@@ -28,9 +28,6 @@ function login(){
         socket.emit("garsonLogin",{"username":username,"password":password});
     });
 }
-function masaOnayla(masaNo){
-    socket.emit("masaOnayla",{"masaNo":masaNo});
-}
-function masaOnaylama(masaNo){
-    socket.emit("masaOnaylama",{"masaNo":masaNo});
+function masaCevapla(masaNo,cevap){
+    socket.emit("masaCevapla",{"masaNo":masaNo,"cevap":cevap});
 }
