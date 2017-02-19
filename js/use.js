@@ -4,8 +4,8 @@ function session(){
 	this.siparisler = new Array();
 }
 var session = new session();
-socket.emit("firstLogin",true);
-socket.on("listenFirstLogin",function(data){
+socket.emit("masafirstLogin",true);
+socket.on("listenMasaFirstLogin",function(data){
 	if(data.login == true){
 		$(document).ready(function(){
 			$("title").html("Sipariş verebilirsiniz");
@@ -21,3 +21,7 @@ socket.on("listenFirstLogin",function(data){
 		});
 	}
 });
+function masaLogin(){
+    var masaNo = $("input[name='masaNo']").val();
+    socket.emit("masaLogin",{"masaNo":masaNo});
+}

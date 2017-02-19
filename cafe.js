@@ -20,7 +20,7 @@ var connect = mysql.createConnection({
 	"port":3306
 });
 connect.connect();
-
+connect.query("UPDATE garsonlar SET status='0',socketId='0',ip='0'");
 function masaNode(){
 	this.masaNo = "";
 	this.socketId = "";
@@ -32,6 +32,7 @@ function masaBl(socket){
     this.socket = socket;
 	this.root = undefined;
 	this.last = undefined;
+	this.length = 0;
 	this.insert = function(masaNo,socketId,ip){
 		var newMasaNode = new masaNode();
 		newMasaNode.masaNo = masaNo;
@@ -45,6 +46,7 @@ function masaBl(socket){
 			this.last.next = newMasaNode;
 			this.last = newMasaNode;
 		}
+		this.length++;
 	}
     this.del = function(socketId){
         if(this.root.socketId == socketId){
@@ -61,6 +63,7 @@ function masaBl(socket){
                 temp = temp.next;
             }
         }
+        this.length--;
     }
     this.edit = function(socketId,newSocketId){
         var temp = this.root;
@@ -92,6 +95,7 @@ function garsonBl(socket){
     this.socket = socket;
 	this.root = undefined;
 	this.last = undefined;
+	this.length = 0;
 	this.insert = function(username,socketId,ip){
 		var newGarsonNode = new garsonNode();
 		newGarsonNode.username = username;
@@ -105,6 +109,7 @@ function garsonBl(socket){
 			this.last.next = newGarsonNode;
 			this.last = newGarsonNode;
 		}
+		this.length++;
 	}
 	this.del = function(socketId){
 	    if(this.root.socketId == socketId){
@@ -121,6 +126,7 @@ function garsonBl(socket){
 	            temp = temp.next;
             }
         }
+        this.length--;
     }
     this.edit = function(socketId,newSocketId){
         var temp = this.root;
@@ -139,21 +145,40 @@ function garsonBl(socket){
             temp = temp.next;
         }
     }
+    this.sendOthers = function(socketId,variableName,data){
+        var temp = this.root;
+        while(temp != undefined){
+            if(temp.socketId != socketId) {
+                this.socket.to(temp.socketId).emit(variableName, data);
+            }
+            temp = temp.next;
+        }
+    }
+    this.issetSocketId = function(socketId){
+        var temp = this.root;
+        while(temp != undefined){
+            if(temp.socketId == socketId){
+                return true;
+            }
+            temp = temp.next;
+        }
+        return false;
+    }
 }
 var masaBl = new masaBl(io);
 
 var garsonBl = new garsonBl(io);
 
 io.sockets.on("connection",function(socket){
-	socket.on("firstLogin",function(data){
+	socket.on("masafirstLogin",function(data){
 		var ip = socket.handshake.address;
-		connect.query("SELECT * FROM masalar WHERE doluMu='1' and ip="+mysql.escape(ip),function(error,result){
+		connect.query("SELECT * FROM masalar WHERE status='1' and ip="+mysql.escape(ip),function(error,result){
 			if(error == null){
 				if(result.length > 0){
-					io.to(socket.id).emit("listenFirstLogin",{"login":true});
+					io.to(socket.id).emit("listenMasaFirstLogin",{"login":true});
 				}
 				else{
-					io.to(socket.id).emit("listenFirstLogin",{"login":false});
+					io.to(socket.id).emit("listenMasaFirstLogin",{"login":false});
 				}
 			}
 			else{
@@ -167,6 +192,7 @@ io.sockets.on("connection",function(socket){
 			if(error == null){
 				if(result.length > 0){
 				    io.to(socket.id).emit("listenGarsonFirstLogin",{"login":true});
+				    garsonBl.edit(result[0]["socketId"],socket.id);
                 }
                 else{
                     io.to(socket.id).emit("listenGarsonFirstLogin",{"login":false});
@@ -178,13 +204,32 @@ io.sockets.on("connection",function(socket){
 		});
 	});
 	socket.on("garsonLogin",function(data){
-	    console.log(data);
         var ip = socket.handshake.address;
         var username = mysql.escape(data.username);
         var password = mysql.escape(md5(data.password));
         connect.query("SELECT * FROM garsonlar WHERE username="+username+" and password="+password,function (error,result) {
-            console.log(result.length)
+            if(result.length > 0){
+                connect.query("UPDATE garsonlar SET ip="+mysql.escape(ip)+",socketId="+mysql.escape(socket.id)+", status='1' WHERE id='"+result[0]["id"]+"'");
+                io.to(socket.id).emit("listenGarsonFirstLogin",{"login":true});
+                garsonBl.insert(username,socket.id,ip);
+            }
+            else{
+                io.to(socket.id).emit("listenGarsonFirstLogin",{"login":false});
+            }
         });
+    });
+	socket.on("masaLogin",function (data) {
+        var masaNo = data.masaNo;
+        var ip = socket.handshake.address;
+        connect.query("SELECT * FROM masalar WHERE masaNo="+mysql.escape(masaNo)+" and ip="+mysql.escape(ip)+" and status='0'",function (error,result) {
+            garsonBl.sendAll("masaIstegi",{"masaNo":masaNo});
+        });
+    });
+	socket.on("masaOnayla",function (data) {
+        var masaNo = data.masaNo;
+        if(garsonBl.issetSocketId(socket.id)){
+            garsonBl.sendOthers("masaCevaplandi",{"masaNo":masaNo});
+        }
     });
 });
 
